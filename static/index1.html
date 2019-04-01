@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+	<title>Sloth Ambassador - Bot Interface</title>
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body { font: 13px Helvetica, Arial; }
+		h1 { text-align: center; padding: 20px; }
+		form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+		form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+		form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+		#messages { list-style-type: none; margin: 0; padding: 0; }
+		#messages li { padding: 5px 10px; }
+		#messages li.customer-error { color: red; }
+		#messages li.customer-message { color: blue; }
+		#messages li.customer-message::before { content: "> " }
+		#messages li:nth-child(odd) { background: #eee; }
+		.opt { margin: 2px 6px; line-height: 24px; border: 1px solid; padding: 5px 10px; display: inline-block; border-radius: 25px; cursor:pointer; }
+		.opt.disabled{ cursor:default;}
+		.opt.selected{ background:aqua;}
+	</style>
+</head>
+<body>
+	<h1>Chat</h1>
+	
+	<ul id="messages"></ul>
+	
+	<form>
+		<input id="m" autocomplete="off" />
+		<button>Send</button>
+    </form>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script>
+var positionSeq = ["Welcome","Naming","SloIntro","NiceResponse","Assistant","NotRelevant","TurnOff","DontNeedBot","SlothInfo","SlothVideo"];
+var currentPos = 0;
+
+$(function () {
+	$.ajax({
+		url: "http://localhost:3001/",
+		method: "POST",
+		data: { text : 'hi' }
+	}).done(function(data){
+		//$('#m, button').attr('disabled','disabled');
+		currentPos++;
+		$('#messages').append($('<li>').text(data.data.fulfillmentText));
+	});
+	
+	// When the form is submitted, send a customer message to the server
+	$('form').submit(function(){
+		var messageText = $('#m').val();
+		$('#messages').append($('<li class="customer-message">').text(messageText));
+		$.ajax({
+			url: "http://localhost:3001/",
+			method: "POST",
+			data: { text : messageText }
+		}).done(function(res){
+			validateResponse(res.data);
+		});
+		
+		$('#m').val('');
+		return false;
+	});
+	
+});
+
+/**********/
+function validateResponse(data){
+	console.log(data.intent.displayName, currentPos);
+	//if(data.intent.displayName == positionSeq[currentPos]){		
+		//currentPos++;
+		$('#messages').append($('<li>').text(data.fulfillmentText));
+	//}else{
+		//showDefaultMessage();
+	//}
+}
+
+function showDefaultMessage(){
+	$('#messages').append("<div>What is that? I didn't get you.</div>");
+}
+</script>
+</body>
+</html>
+

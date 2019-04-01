@@ -1,0 +1,139 @@
+<!doctype html>
+<html>
+<head>
+	<title>Bot Interface</title>
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		body { font: 13px Helvetica, Arial; }
+		h1 { text-align: center; padding: 20px; }
+		form { background: #000; padding: 3px; position: fixed; bottom: 0; width: 100%; }
+		form input { border: 0; padding: 10px; width: 90%; margin-right: .5%; }
+		form button { width: 9%; background: rgb(130, 224, 255); border: none; padding: 10px; }
+		#messages { list-style-type: none; margin: 0; padding: 0; }
+		#messages li { padding: 5px 10px; }
+		#messages li.customer-error { color: red; }
+		#messages li.customer-message { color: blue; }
+		#messages li.customer-message::before { content: "> " }
+		#messages li:nth-child(odd) { background: #eee; }
+		.opt { margin: 2px 6px; line-height: 24px; border: 1px solid; padding: 5px 10px; display: inline-block; border-radius: 25px; cursor:pointer; }
+		.opt.disabled{ cursor:default;}
+		.opt.selected{ background:aqua;}
+	</style>
+</head>
+<body>
+	<h1>Chat</h1>
+	
+	<ul id="messages"></ul>
+	
+	<form>
+		<input id="m" autocomplete="off" />
+		<button>Send</button>
+    </form>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+<script>
+var positionSeq = ["Welcome","QuizQuestion | QuizCorrectAns | QuizIncorrectAns","DontGiveUp | SlothBear"];
+var currentPos = 0;
+var quizCount = 0;
+
+$(function () {
+	$.ajax({
+		url: "http://chatbotquiz-sify-bot.1d35.starter-us-east-1.openshiftapps.com/",
+		method: "POST",
+		data: { text : 'hi' }
+	}).done(function(data){
+		$('#m, button').attr('disabled','disabled');
+		$('#messages').append($('<li>').text(data.data.fulfillmentText));
+		data.data.fulfillmentMessages[1]?loadOptions(data.data.fulfillmentMessages[1].payload.fields):'';
+	});
+	
+	// When the form is submitted, send a customer message to the server
+	$('form').submit(function(){
+		var messageText = $('#m').val();
+		$('#messages').append($('<li class="customer-message">').text(messageText));
+		$.ajax({
+			url: "http://chatbotquiz-sify-bot.1d35.starter-us-east-1.openshiftapps.com/",
+			method: "POST",
+			data: { text : messageText }
+		}).done(function(res){
+			validateResponse(res.data);
+		});
+		
+		$('#m').val('');
+		return false;
+	});
+	
+	$('body').on('click', '.opt', function(){
+		if($(this).hasClass('disabled')) return;
+		$(this).addClass('selected');
+		var val = $(this).attr('val');
+		currentPos++;
+		$.ajax({
+			url: "http://chatbotquiz-sify-bot.1d35.starter-us-east-1.openshiftapps.com/",
+			method: "POST",
+			data: { text : val }
+		}).done(function(data){
+			for(let c in data.data.fulfillmentMessages[1].payload.fields){
+				if(c == val)
+					$('#messages').append($('<li>').text(data.data.fulfillmentMessages[1].payload.fields[c].stringValue)).append('<br>');
+			}
+			$('#messages').append($('<li>').text(data.data.fulfillmentText));
+			$('#m, button').removeAttr('disabled');
+		});
+		$('.opt').addClass('disabled');
+	});
+});
+
+function loadOptions(data){
+	for(let c in data){
+		$('#messages').append($('<span class="opt">').text(data[c].stringValue).attr('val', c)).append('<br>');
+	}
+}
+
+/**********/
+function validateResponse(data){
+	console.log(data.intent.displayName, currentPos);
+	if(data.intent.displayName == positionSeq[currentPos]){		
+		currentPos++;
+		$('#messages').append($('<li>').text(data.fulfillmentText));
+	}else{
+		if(positionSeq[currentPos].indexOf(data.intent.displayName) >= 0){
+			switch(data.intent.displayName){
+				case 'QuizIncorrectAns':
+				case 'QuizCorrectAns':
+				case 'QuizQuestion':
+					quizCount++;
+					if(quizCount ==  3 && data.intent.displayName == 'QuizIncorrectAns'){
+						currentPos++;
+						$('#messages').append($('<li>').text(data.fulfillmentMessages[1].payload.fields.ans.stringValue));
+					}else if(data.intent.displayName == 'QuizCorrectAns'){
+						quizCount = 3;
+						currentPos++;
+						$('#messages').append($('<li>').text(data.fulfillmentText));
+					}else{
+						$('#messages').append($('<li>').text(data.fulfillmentText));
+					}
+					break;
+				case 'DontGiveUp':
+				case 'SlothBear':
+					$('#messages').append($('<li>').text(data.fulfillmentText));
+					break;
+			}
+		}else{
+			showDefaultMessage();
+		}
+	}
+}
+
+function showDefaultMessage(){
+	switch(currentPos){
+		case 1:
+			$('#messages').append($('<li>').text('Please answer the quiz with animal name.'));
+			break;
+		default:
+			$('#messages').append("<div>What is that? I didn't get you.</div>");
+	}
+}
+</script>
+</body>
+</html>
+
