@@ -36,7 +36,7 @@ var currentPos = 0;
 
 $(function () {
 	$.ajax({
-		url: "http://localhost:3001/",
+		url: "http://chatbotextend-sify-bot.1d35.starter-us-east-1.openshiftapps.com",
 		method: "POST",
 		data: { text : 'hi' }
 	}).done(function(data){
@@ -50,7 +50,7 @@ $(function () {
 		var messageText = $('#m').val();
 		$('#messages').append($('<li class="customer-message">').text(messageText));
 		$.ajax({
-			url: "http://localhost:3001/",
+			url: "http://chatbotextend-sify-bot.1d35.starter-us-east-1.openshiftapps.com",
 			method: "POST",
 			data: { text : messageText }
 		}).done(function(res){
